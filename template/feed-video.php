@@ -21,7 +21,7 @@ $args = array(
 		'relation'    => 'AND',
 		array(
 			'key'       => 'pn_sent',
-			'value'     => '0',
+			'value'     => '1',
 			'compare'   => '=',
 		),
 		array(
