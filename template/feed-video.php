@@ -61,11 +61,11 @@ if ( $the_query->have_posts()  ) {
 
 		# Event Status
 		if ( $str_start_time < $str_current_time and $str_end_time > $str_current_time ) {
-			$time_compare = 'Event is in progress.';
+			$time_compare = 'Event is in progress.'; // Event is in progress.
 		} elseif ( $str_start_time > $str_current_time and $str_end_time > $str_current_time ) {
-			$time_compare = 'Event is upcoming.';
+			$time_compare = 'Event is upcoming.'; // Event is upcoming.
 		} elseif ( $str_current_time > $str_start_time and $str_current_time > $str_end_time ) {
-			$time_compare = 'Event is over.';
+			$time_compare = 'Event is over.'; // Event is over.
 			add_post_meta( $id, 'expired', true, true ) or update_post_meta( $id, 'expired', true, true );
 		} else {
 			$time_compare = 'Error comparing times.';
@@ -90,6 +90,7 @@ if ( $the_query->have_posts()  ) {
 			'event-status' 		=> $time_compare,
 			'expired' 				=> $expired,
 			'live'   					=> $islive,
+			'scheduled'   		=> 1,
 			);
 
 		# Add single posts to array
@@ -117,9 +118,9 @@ if ( $the_query->have_posts()  ) {
 	# No Upcoming Events
 	$no_events = array(
 		'event' 					=> 'There are no upcoming live videos scheduled.',
-		'event-status' 		=> 0,
-		'start-time'			=> "1985-10-26 01:21:22",
+		'start-time'			=> '1985-10-26 01:21:22', // Roads? Where we're going, we don't need roads.
 		'live'   					=> 1, // TODO temp fix until app is updated, then change back to 0
+		'scheduled'   		=> 0,
 		);
 	$json = json_encode( array( $no_events ) );
 	nocache_headers();
