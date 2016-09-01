@@ -5,7 +5,7 @@ Plugin URI: http://www.forumcomm.com/digital-network/
 Description: Plugin for approving or rejecting Bison Media photo feed images and scheduling live video event streams.
 Author: FCC Interactive (Ryan Veitch)
 Author URI: http://www.forumcomm.com/digital-network/
-Version: 1.2
+Version: 1.2.1-16.09.01
 Text Domain: bison-media-admin
 */
 
@@ -188,109 +188,128 @@ Text Domain: bison-media-admin
 * Include and initialize the Parse PHP SDK autoloader.
 */
 
-  /* WP-Options */
-  $app_id = get_option('pn_app_id');
-  $rest_key = get_option('pn_app_masterkey');
-  $master_key = get_option('pn_app_restkey');
+/* WP-Options */
+$app_id = get_option( 'pn_app_id' );
+$rest_key = get_option( 'pn_app_masterkey' );
+$master_key = get_option( 'pn_app_restkey' );
 
-  /* Load the Parse PHP SDK */
-  require('includes/parse-php-sdk-master/autoload.php');
+/* Load the Parse PHP SDK */
+require( 'includes/parse-php-sdk-master/autoload.php' );
 
-  /* Add class "use" declarations */
-  use Parse\ParseClient;
-  use Parse\ParseObject;
-  use Parse\ParseQuery;
-  use Parse\ParsePush;
-  use Parse\ParseInstallation;
+/* Add class "use" declarations */
+use Parse\ParseClient;
+use Parse\ParseObject;
+use Parse\ParseQuery;
+use Parse\ParsePush;
+use Parse\ParseInstallation;
 
-  /**
-   * Init parse: app_id, master_key, rest_key
-   */
-  ParseClient::initialize( $app_id, $master_key, $rest_key );
+/**
+ * Init parse: app_id, master_key, rest_key
+ */
+ParseClient::initialize( $app_id, $master_key, $rest_key );
 
 /*************************** PARSE PN-CLASSES ********************************
 ******************************************************************************
 * Include and initialize the Parse PHP SDK autoloader.
 */
 
-  function fcc_pn_schedule($post_id) {
-    /* If this isn't a 'live_video' post, do nothing. */
-    if ('live_video' != get_post_type()) {
-        return;
-    }
-    /* If this is just a revision or autosave, do nothing. */
-    if (wp_is_post_revision($post_id) or wp_is_post_autosave($post_id)) {
-      return;
-    }
-    /* If this post has already been scheduled, do nothing. */
-    if (get_post_meta($post_id, 'pn_sent', true)) {
-      return;
-    }
-    /* If the post status action is 'publish, continue with the PN Schedule' */
-    if ('publish' == get_post_status( $post_id ) ) {
+function fcc_pn_schedule( $post_id ) {
 
-      if ( get_post_meta($post_id, 'start-time', true ) ) {
+	/* If this isn't a 'live_video' post, do nothing. */
+	if ( 'live_video' != get_post_type() ) {
+	    return;
+	}
 
-        /* Declare Variables */
-        $queryIOS = ParseInstallation::query();
-        $alert = get_post_meta( $post_id, 'alert', true ); //Push Notification Text
-        $android_title = get_the_title( $post_id ); //Push Notification Title (Android Only)
-        $start_time = get_post_meta( $post_id, 'start-time', true );
-    			$pstart_time = strtotime( $start_time ) - 300; // Subtract 5 minutes from start time to sent 5 mins earlier.
-          $push_time = date( 'Y-m-d\TH:i', $pstart_time );
+	/* If this is just a revision or autosave, do nothing. */
+	if ( wp_is_post_revision( $post_id ) or wp_is_post_autosave( $post_id ) ) {
+		return;
+	}
 
-        /* Send Push */
-        ParsePush::send( array(
-            "push_time" => new DateTime($push_time), //need timzeone
-            "where" => $queryIOS, // This is purposefully broken to send to all devices
-            data => array(
-                "alert" => $alert,
-                "title" => $android_title,
-                "post_id" => $post_id
-            )
-        ));
+	/* If this post has already been scheduled, do nothing. */
+	if ( get_post_meta( $post_id, 'pn_sent', true ) ) {
+		return;
+	}
 
-        /* Add 'pn_sent' post meta to mark the post as scheduled and prevent duplicate push sends */
-        add_post_meta( $post_id, 'pn_sent', true, true ) or update_post_meta( $post_id, 'pn_sent', true, true );
-      } else {
-        return; // Do nothing, no start time was included
-      }
-    }
-  }
-  add_action('wp_insert_post', 'fcc_pn_schedule');
+	/* If the post status action is 'publish, continue with the PN Schedule' */
+	if ( 'publish' == get_post_status( $post_id ) ) {
 
-/*************************** PARSE API FUNCTIONS *******************************
-********************************************************************************
-* Parse.com API functions begin here.
+		if ( get_post_meta( $post_id, 'start-time', true ) ) {
+
+			/* Declare Variables */
+			$parse_query = ParseInstallation::query();
+			$alert = get_post_meta( $post_id, 'alert', true ); //Push Notification Text
+			$android_title = get_the_title( $post_id ); //Push Notification Title (Android Only)
+			$start_time = get_post_meta( $post_id, 'start-time', true );
+				$pstart_time = strtotime( $start_time ) - 300; // Subtract 5 minutes from start time to sent 5 mins earlier.
+			  $push_time = date( 'Y-m-d\TH:i', $pstart_time );
+
+			/* Send Push */
+			ParsePush::send( array(
+				'push_time' => new DateTime( $push_time ),
+				'where' => $parse_query,
+				'expiry' => 86400,
+				'data' => array(
+					'alert' => $alert,
+					'title' => $android_title,
+					'post_id' => $post_id,
+				)
+			));
+
+			/* Add 'pn_sent' post meta to mark the post as scheduled and prevent duplicate push sends */
+			add_post_meta( $post_id, 'pn_sent', true, true ) or update_post_meta( $post_id, 'pn_sent', true, true );
+		} else {
+			return; // Do nothing, no start time was included
+		}
+	}
+}
+add_action( 'wp_insert_post', 'fcc_pn_schedule' );
+
+
+/*--------------------------------------------------------------
+# PARSE API FUNCTIONS
+---------------------------------------------------------------*/
+
+/**
+ * Push Notification Send: iOS
+ * Location: WP-Dashboard, 'Parse Push Notifications' Screen
+ */
+function parse_push_notifications_send( $message ) {
+	$query_ios = ParseInstallation::query();
+	$query_ios->equalTo( 'deviceType', 'ios' );
+	ParsePush::send(array(
+		'where' => $query_ios,
+		'data' => array(
+			'alert' => $message,
+		),
+	));
+}
+
+/**
+ * Push Notification Send: To Everyone
+ * Location: WP-Dashboard, 'Parse Push Notifications' Screen
+ */
+function parse_push_notifications_send_to_all( $message ) {
+	ParsePush::send(array(
+		'where' => '{}',
+		'expiry' => 86400, // expire in 24 hrs
+		'data' => array(
+			'alert' => $message,
+		),
+	));
+}
+
+/**
+* Approve Photo
 */
+if ( isset( $_POST ['parse_approve_push_btn'] ) ) {
+	parse_approval_send( $_POST['ob_id'] );
+}
 
-   /**
-   * Push Notification Send: To Everyone
-   * Location: WP-Dashboard, 'Parse Push Notifications' Screen
-   */
-    function parse_push_notifications_send($message) {
-        $queryIOS = ParseInstallation::query();
-        $queryIOS->equalTo('deviceType', 'ios');
-        ParsePush::send(array(
-            "where" => $queryIOS,
-            "data" => array(
-                "alert" => $message
-            )
-        ));
-    }
-
-   /**
-    * Approve Photo
-    */
-    if ( isset ( $_POST ['parse_approve_push_btn'] ) ) {
-      parse_approval_send( $_POST['ob_id'] );
-    }
-
-    function parse_approval_send( $message ) {
-     $approvePhotos = new ParseObject( "Photos", "$message" );
-     $approvePhotos->set( "approved", true );
-     $approvePhotos->save();
-    }
+function parse_approval_send( $message ) {
+	$approve_photos = new ParseObject( 'Photos', $message );
+	$approve_photos->set( 'approved', true );
+	$approve_photos->save();
+}
 
   /**
    * Unapprove Photo
@@ -299,9 +318,9 @@ Text Domain: bison-media-admin
      parse_unapprove_send( $_POST['ob_id'] );
    }
   function parse_unapprove_send( $message ) {
-   $approvePhotos = new ParseObject( "Photos", "$message" );
-   $approvePhotos->set( "approved", false );
-   $approvePhotos->save();
+   $approve_photos = new ParseObject( "Photos", "$message" );
+   $approve_photos->set( "approved", false );
+   $approve_photos->save();
   }
 
   /**
@@ -311,7 +330,7 @@ Text Domain: bison-media-admin
      parse_del_send( $_POST['ob_id'] );
    }
 
-  function parse_del_send($message){
+  function parse_del_send( $message ) {
    // Set and Find Object
    $parsePhotos = new ParseObject('Photos');
    $parsePhotosQuery = new ParseQuery('Photos');
@@ -322,82 +341,30 @@ Text Domain: bison-media-admin
    $object->destroy();
   }
 
-/*************************** Bison Media JSON Feed *****************************
- *******************************************************************************
- * Parse.com API functions begin here.
- */
+/*--------------------------------------------------------------
+ # JSON FEED
+ --------------------------------------------------------------*/
 
-   $bisonfeed_json = bisonfeed_json::get_instance();
-   $bisonfeed_json->init();
+/**
+	* Add 'video' JSON Feed
+	*
+	* @since 1.15.08.11
+	* @version 1.16.09.01
+	*/
+function fcc_bison_media_do_json_feed() {
+	add_feed( 'video', 'add_bison_media_video_feed' );
+	add_feed( 'liveblog', 'add_bison_media_blog_feed' );
+}
+add_action( 'init', 'fcc_bison_media_do_json_feed' );
 
-   register_activation_hook( __FILE__, array($bisonfeed_json, 'add_bisonfeed_json_once') );
-   register_deactivation_hook( __FILE__, array($bisonfeed_json, 'remove_bisonfeed_json') );
 
-   class bisonfeed_json {
-   	static $instance;
-   	const  JSON_TEMPLATE = 'feed-json.php';
+function add_bison_media_video_feed() {
+	load_template( plugin_dir_path( __FILE__ ) . 'template/feed-video.php' );
+}
 
-   	private function __construct() {}
-
-   	public static function get_instance() {
-   		if( !isset( self::$instance ) ) {
-   			$c = __CLASS__;
-   			self::$instance = new $c();
-   		}
-   		return self::$instance;
-   	}
-
-   	public function init() {
-   		add_action( 'init', array( $this, 'add_bisonfeed_json') );
-   		add_action( 'do_bisonfeed_json', array( $this, 'do_bisonfeed_json'), 10, 1 );
-   		add_filter( 'template_include', array( $this, 'template_json') );
-   		add_filter( 'query_vars', array( $this, 'add_query_vars') );
-   	}
-
-   	public function add_bisonfeed_json_once() {
-   		$this->add_bisonfeed_json();
-   	    flush_rewrite_rules();
-   	}
-
-   	public function remove_bisonfeed_json() {
-   		global $wp_rewrite;
-   		$feeds = array();
-   		foreach ( $wp_rewrite->feeds as $feed ) {
-   			if ( $feed !== 'video' ) {
-   				$feeds[] = $feed;
-   			}
-   		}
-   		$wp_rewrite->feeds = $feeds;
-   	    flush_rewrite_rules();
-   	}
-
-   	public function add_query_vars($qvars) {
-   		$qvars[] = 'callback';
-   		$qvars[] = 'limit';
-   		return $qvars;
-   	}
-
-   	public function add_bisonfeed_json() {
-   		add_feed('video', array($this, 'do_bisonfeed_json'));
-   	}
-
-   	public function do_bisonfeed_json() {
-   		load_template($this->template_json(dirname(__FILE__) . '/includes/template/' . self::JSON_TEMPLATE));
-   	}
-
-   	public function template_json( $template ) {
-   		$template_file = false;
-   		if (get_query_var('feed') === 'video') {
-   			if (file_exists(dirname(__FILE__) . '/includes/template/' . self::JSON_TEMPLATE)) {
-   				$template_file = dirname(__FILE__) . '/includes/template/' . self::JSON_TEMPLATE;
-   			}
-   		}
-
-   		$template_file = ($template_file !== false ? $template_file : $template);
-   		return apply_filters( 'feed-json-template-file', $template_file );
-   	}
-   }
-
+function add_bison_media_blog_feed() {
+	load_template( plugin_dir_path( __FILE__ ) . 'template/feed-liveblog.php' );
+}
 
  /*************************** PARSE-PN Admin Dashboard Menu ********************
  *******************************************************************************
@@ -485,7 +452,7 @@ Text Domain: bison-media-admin
    				die ( _e('Hacker?', 'parse_push_notifications') );
    		if (function_exists ('check_admin_referer') )
    			check_admin_referer('parse_push_notifications_form');
-           parse_push_notifications_send($_POST['pn_text']);
+           parse_push_notifications_send_to_all($_POST['pn_text']);
    	}
 
      ?>
