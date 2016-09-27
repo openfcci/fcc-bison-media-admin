@@ -1,6 +1,13 @@
 <?php
 use Parse\ParseObject;
 use Parse\ParseQuery;
+
+
+
+use backendless\model\Data;
+use backendless\model\BackendlessCollection;
+use backendless\services\persistence\BackendlessDataQuery;
+use backendless\Backendless;
 /*************************** Photo Feed Admin Page *****************************
  *******************************************************************************
  * Photo feed admin page functions begin here.
@@ -69,11 +76,12 @@ use Parse\ParseQuery;
       public function options() {
       	echo '<div class="wrap">';
       	echo '<h2>' . $this->page_title . '</h2>';
-      	try {
-      	    $this->form();
-      	} catch (Exception $e) {
-      	    echo $e->getMessage();
-      	}
+      	// try {
+      	//     $this->form();
+      	// } catch (Exception $e) {
+      	//     echo $e->getMessage();
+      	// }
+				$this->form();
       	echo '</div> <!-- end .wrap -->';
       } //END function options
 
@@ -113,19 +121,17 @@ use Parse\ParseQuery;
            */
         	switch ( $tab ) {
             case '0':
-             $photos = new ParseObject("Photos"); // set Parse Object to "Photos"
-             $query = new ParseQuery("Photos");
-             $query->EqualTo("approved", false);  //Filters to Unapproved Photos
-             $query->descending("createdAt"); // Order by most recent uploads first
-
+						 $backendless_photos =  new Photos();
+						 $backendless_query = new BackendlessDataQuery();
+						 $backendless_query->setWhereClause("approved = false")
+						 ->addSortBy("created");
+						 $result_collection = Backendless::$Persistence->of( 'Photos' )->find( $backendless_query );
+						 $result_collection = $result_collection->getAsObject();
              $pagenum = isset( $_GET['pagenum'] ) ? absint( $_GET['pagenum'] ) : 1;
              $limit = 5;
              $offset = ( $pagenum - 1 ) * $limit;
-             $parseData = $query->find();
-             $entries = array_slice($parseData, $offset, $limit );
-             $thickbox = add_thickbox();
-
-             $total = count($parseData);
+							$entries =array_slice($result_collection, $offset, $limit );
+						 $total = Backendless::$Persistence->of( 'Photos' )->find( $backendless_query )->totalObjectsCount();
              $num_of_pages = ceil( $total / $limit );
              $page_links = paginate_links( array(
                  'base' => add_query_arg( 'pagenum', '%#%' ),
@@ -157,19 +163,20 @@ use Parse\ParseQuery;
                </tfoot>
 
                <tbody>
-                   <?php if( $entries ) { ?>
+                   <?php
+									 if( $entries ) { ?>
 
                        <?php
                        $count = 1;
                        $class = '';
                        foreach( $entries as $entry ) {
                            $class = ( $count % 2 == 0 ) ? ' class="alternate"' : '';
-                           $photoId = $entry->getObjectId();
+                           $photoId = $entry->objectId;
                        ?>
 
                        <tr <?php echo $class; ?> >
-                           <td><?php echo $thickbox ?><a href="<?php echo $entry->image->getURL(); ?>?TB_iframe=true&width=auto&height=auto" class="thickbox"><img src="<?php echo $entry->thumbnail->getURL() ?>"></a></td>
-                           <td><?php echo $entry->getCreatedAt()->format('m/d/Y'); ?></td>
+                           <td><?php echo $thickbox ?><a href="<?php echo $entry->image ?>?TB_iframe=true&width=auto&height=auto" class="thickbox"><img src="<?php echo $entry->thumbnail ?>"></a></td>
+                           <td><?php echo $entry->created;?></td>
                            <td align="center" style="padding-top:0px;"><form id="parse_approve" name="parse_approve_form" method="post" method="post"><div><p><input type="hidden" name="ob_id" value="<?php echo $photoId; ?>"/></p></div><div><input type="submit" id="push_button" class="button-primary" name="parse_approve_push_btn" value="Approve" style="width:95px;"/></div></form></td>
                            <td align="center" style="padding-top:0px;"><form id="parse_delete" name="parse_delete_form" method="post" method="post"><div><p><input type="hidden" name="ob_id" value="<?php echo $photoId; ?>"/></p></div><div><input type="submit" id="push_button" class="button-primary" name="parse_delete_push_btn" value="Delete" style="background:#F26969; border-color:#D44040; width:75px;"/></div></form></td>
                        </tr>
@@ -202,28 +209,51 @@ use Parse\ParseQuery;
                * Tab 2: Approved Photos
                */
 
-               $photos = new ParseObject("Photos"); // set Parse Object to "Photos"
-               $query = new ParseQuery("Photos");
-               $query->notEqualTo("approved", false);  //Filters to Approved Photos
-               $query->descending("createdAt"); // Order by most recent uploads first
+              //  $photos = new ParseObject("Photos"); // set Parse Object to "Photos"
+              //  $query = new ParseQuery("Photos");
+              //  $query->notEqualTo("approved", false);  //Filters to Approved Photos
+              //  $query->descending("createdAt"); // Order by most recent uploads first
+							 //
+              //  $pagenum = isset( $_GET['pagenum'] ) ? absint( $_GET['pagenum'] ) : 1;
+              //  $limit = 5;
+              //  $offset = ( $pagenum - 1 ) * $limit;
+              //  $parseData = $query->find();
+              //  $entries = array_slice($parseData, $offset, $limit );
+              //  $thickbox = add_thickbox();
+							 //
+              //  $total = count($parseData);
+              //  $num_of_pages = ceil( $total / $limit );
+              //  $page_links = paginate_links( array(
+              //      'base' => add_query_arg( 'pagenum', '%#%' ),
+              //      'format' => '',
+              //      'prev_text' => __( '&laquo;', 'aag' ),
+              //      'next_text' => __( '&raquo;', 'aag' ),
+              //      'total' => $num_of_pages,
+              //      'current' => $pagenum
+              //  ) );
+							 //
 
-               $pagenum = isset( $_GET['pagenum'] ) ? absint( $_GET['pagenum'] ) : 1;
-               $limit = 5;
-               $offset = ( $pagenum - 1 ) * $limit;
-               $parseData = $query->find();
-               $entries = array_slice($parseData, $offset, $limit );
-               $thickbox = add_thickbox();
-
-               $total = count($parseData);
-               $num_of_pages = ceil( $total / $limit );
-               $page_links = paginate_links( array(
-                   'base' => add_query_arg( 'pagenum', '%#%' ),
-                   'format' => '',
-                   'prev_text' => __( '&laquo;', 'aag' ),
-                   'next_text' => __( '&raquo;', 'aag' ),
-                   'total' => $num_of_pages,
-                   'current' => $pagenum
-               ) );
+							 $backendless_photos =  new Photos();
+							 $backendless_query = new BackendlessDataQuery();
+							 $backendless_query->setWhereClause("approved = true")
+							 ->addSortBy("created");
+							 $result_collection = Backendless::$Persistence->of( 'Photos' )->find( $backendless_query );
+							 $result_collection = $result_collection->getAsObject();
+								$pagenum = isset( $_GET['pagenum'] ) ? absint( $_GET['pagenum'] ) : 1;
+								$limit = 5;
+								$offset = ( $pagenum - 1 ) * $limit;
+							  $thickbox = add_thickbox();
+								$entries =array_slice($result_collection, $offset, $limit );
+							 	$total = Backendless::$Persistence->of( 'Photos' )->find( $backendless_query )->totalObjectsCount();
+								$num_of_pages = ceil( $total / $limit );
+								$page_links = paginate_links( array(
+										'base' => add_query_arg( 'pagenum', '%#%' ),
+										'format' => '',
+										'prev_text' => __( '&laquo;', 'aag' ),
+										'next_text' => __( '&raquo;', 'aag' ),
+										'total' => $num_of_pages,
+										'current' => $pagenum
+								) );
 
                echo '<div class="wrap">';
 
@@ -255,12 +285,12 @@ use Parse\ParseQuery;
                            $class = '';
                            foreach( $entries as $entry ) {
                                $class = ( $count % 2 == 0 ) ? ' class="alternate"' : '';
-                               $photoId = $entry->getObjectId();
+                               $photoId = $entry->objectId;
                            ?>
 
                            <tr <?php echo $class; ?> >
-                               <td><?php echo $thickbox ?><a href="<?php echo $entry->image->getURL(); ?>?TB_iframe=true&width=auto&height=auto" class="thickbox"><img src="<?php echo $entry->thumbnail->getURL() ?>"></a></td>
-                               <td><?php echo $entry->getCreatedAt()->format('m/d/Y'); ?></td>
+                               <td><?php echo $thickbox ?><a href="<?php echo $entry->image ?>?TB_iframe=true&width=auto&height=auto" class="thickbox"><img src="<?php echo $entry->thumbnail ?>"></a></td>
+                               <td><?php echo $entry->created ?></td>
                                <td align="center" style="padding-top:0px;"><form id="parse_unapprove" name="parse_unapprove_form" method="post" method="post"><div><p><input type="hidden" name="ob_id" value="<?php echo $photoId; ?>"/></p></div><div><input type="submit" id="push_button" class="button-primary" name="parse_unapprove_push_btn" value="Unapprove" style="width:95px;"/></div></form></td>
                                <td align="center" style="padding-top:0px;"><form id="parse_delete" name="parse_delete_form" method="post" method="post"><div><p><input type="hidden" name="ob_id" value="<?php echo $photoId; ?>"/></p></div><div><input type="submit" id="push_button" class="button-primary" name="parse_delete_push_btn" value="Delete" style="background:#F26969; border-color:#D44040; width:75px;"/></div></form></td>
                            </tr>
@@ -289,28 +319,28 @@ use Parse\ParseQuery;
         		break;
         	    case '2':
 
-              $photos = new ParseObject("Photos"); // set Parse Object to "Photos"
-              $query = new ParseQuery("Photos");
-              $query->EqualTo("approved", false);  //Filters to Unapproved Photos
-              $query->descending("createdAt"); // Order by most recent uploads first
-
-              $pagenum = isset( $_GET['pagenum'] ) ? absint( $_GET['pagenum'] ) : 1;
-              $limit = 5;
-              $offset = ( $pagenum - 1 ) * $limit;
-              $parseData = $query->find();
-              $entries = array_slice($parseData, $offset, $limit );
-              $thickbox = add_thickbox();
-
-              $total = count($parseData);
-              $num_of_pages = ceil( $total / $limit );
-              $page_links = paginate_links( array(
-                  'base' => add_query_arg( 'pagenum', '%#%' ),
-                  'format' => '',
-                  'prev_text' => __( '&laquo;', 'aag' ),
-                  'next_text' => __( '&raquo;', 'aag' ),
-                  'total' => $num_of_pages,
-                  'current' => $pagenum
-              ) );
+              // $photos = new ParseObject("Photos"); // set Parse Object to "Photos"
+              // $query = new ParseQuery("Photos");
+              // $query->EqualTo("approved", false);  //Filters to Unapproved Photos
+              // $query->descending("createdAt"); // Order by most recent uploads first
+							//
+              // $pagenum = isset( $_GET['pagenum'] ) ? absint( $_GET['pagenum'] ) : 1;
+              // $limit = 5;
+              // $offset = ( $pagenum - 1 ) * $limit;
+              // $parseData = $query->find();
+              // $entries = array_slice($parseData, $offset, $limit );
+              // $thickbox = add_thickbox();
+							//
+              // $total = count($parseData);
+              // $num_of_pages = ceil( $total / $limit );
+              // $page_links = paginate_links( array(
+              //     'base' => add_query_arg( 'pagenum', '%#%' ),
+              //     'format' => '',
+              //     'prev_text' => __( '&laquo;', 'aag' ),
+              //     'next_text' => __( '&raquo;', 'aag' ),
+              //     'total' => $num_of_pages,
+              //     'current' => $pagenum
+              // ) );
 
               echo '<div class="wrap">';
 
@@ -343,12 +373,12 @@ use Parse\ParseQuery;
                           $class = '';
                           foreach( $entries as $entry ) {
                               $class = ( $count % 2 == 0 ) ? ' class="alternate"' : '';
-                              $photoId = $entry->getObjectId();
+                              $photoId = $entry->objectId;
                           ?>
 
                           <tr <?php echo $class; ?> >
-                              <td><?php echo $thickbox ?><a href="<?php echo $entry->image->getURL(); ?>?TB_iframe=true&width=auto&height=auto" class="thickbox"><img src="<?php echo $entry->thumbnail->getURL() ?>"></a></td>
-                              <td><?php echo $entry->getCreatedAt()->format('m/d/Y'); ?></td>
+                              <td><?php echo $thickbox ?><a href="<?php echo $entry->image; ?>?TB_iframe=true&width=auto&height=auto" class="thickbox"><img src="<?php echo $entry->thumbnail; ?>"></a></td>
+                              <td><?php echo $entry->created; ?></td>
                               <td align="center" style="padding-top:0px;"><form id="parse_approve" name="parse_approve_form" method="post" method="post"><div><p><input type="hidden" name="ob_id" value="<?php echo $photoId; ?>"/></p></div><div><input type="submit" id="push_button" class="button-primary" name="parse_approve_push_btn" value="Approve" style="width:75px;"/></div></form></td>
                               <td align="center" style="padding-top:0px;"><form id="parse_delete" name="parse_delete_form" method="post" method="post"><div><p><input type="hidden" name="ob_id" value="<?php echo $photoId; ?>"/></p></div><div><input type="submit" id="push_button" class="button-primary" name="parse_delete_push_btn" value="Delete" style="background:#F26969; border-color:#D44040; width:75px;"/></div></form></td>
                           </tr>
@@ -378,4 +408,36 @@ use Parse\ParseQuery;
           } //END switch $tab
       } //END function content_tabs
   } //END Options_Manager
+
+
+	class Photos {
+
+    private $approved;
+    private $image;
+    private $thumbnail;
+
+    public function getApproved() {
+        return $this->approved;
+    }
+
+    public function setApproved( $approved ) {
+        $this->approved = $approved;
+    }
+
+    public function getImage() {
+        return $this->image;
+    }
+
+    public function setImage( $image ) {
+        $this->image = $image;
+    }
+
+    public function getThumbnail() {
+        return $this->thumbnail;
+    }
+
+    public function setThumbnail( $thumbnail ) {
+        $this->thumbnail = $thumbnail;
+    }
+}
 ?>

@@ -189,12 +189,26 @@ Text Domain: bison-media-admin
 */
 
 /* WP-Options */
-$app_id = get_option( 'pn_app_id' );
-$rest_key = get_option( 'pn_app_masterkey' );
-$master_key = get_option( 'pn_app_restkey' );
+// $app_id = get_option( 'pn_app_id' );
+// $rest_key = get_option( 'pn_app_masterkey' );
+// $master_key = get_option( 'pn_app_restkey' );
+
+/* WP-Options Backendless */
+// $app_id = get_option( 'backendless_app_id' );
+// $rest_key = get_option( 'backendless_app_masterkey' );
+// $master_key = get_option( 'backendless_app_restkey' );
+// $version = get_option('backendless_app_version');
+
+$app_id = 'app-key';
+$rest_key = 'api-rest-key';
+// $master_key = get_option( 'backendless_app_restkey' );
+$version = 'v1';
 
 /* Load the Parse PHP SDK */
 require( 'includes/parse-php-sdk-master/autoload.php' );
+
+/* Load Backendless PHP SDK */
+require( 'includes/backendless/autoload.php' );
 
 /* Add class "use" declarations */
 use Parse\ParseClient;
@@ -203,11 +217,14 @@ use Parse\ParseQuery;
 use Parse\ParsePush;
 use Parse\ParseInstallation;
 
+use backendless\Backendless;
+
 /**
  * Init parse: app_id, master_key, rest_key
  */
-ParseClient::initialize( $app_id, $master_key, $rest_key );
+// ParseClient::initialize( $app_id, $master_key, $rest_key );
 
+Backendless::initApp($app_id, $rest_key, $version);
 /*************************** PARSE PN-CLASSES ********************************
 ******************************************************************************
 * Include and initialize the Parse PHP SDK autoloader.
@@ -405,12 +422,12 @@ function add_bison_media_blog_feed() {
 
    function fcc_bison_push_settings() { //function parse_push_notifications_options_page() {
 
-      echo'<div class="wrap"><div class="card"><div class="inside">';
-     	parse_push_notifications_create_form();
-     	echo '</div></div></div>';
+      // echo'<div class="wrap"><div class="card"><div class="inside">';
+     // 	parse_push_notifications_create_form();
+     // 	echo '</div></div></div>';
 
      ?>
-     <div class="wrap">
+     <!-- <div class="wrap">
      <div class="card">
        <div class="inside">
    	<form action="options.php" method="post">
@@ -438,8 +455,44 @@ function add_bison_media_blog_feed() {
    	</form>
      </div>
      </div>
-     </div>
+     </div> -->
      <?php
+
+		 echo'<div class="wrap"><div class="card"><div class="inside">';
+			parse_push_notifications_create_form();
+			echo '</div></div></div>';
+
+		?>
+		<div class="wrap">
+		<div class="card">
+			<div class="inside">
+		<form action="options.php" method="post">
+			<?php settings_fields('wp-parse-pn-settings-group'); ?>
+
+			<h3>Parse API App Settings</h3>
+
+			<table class="form-table">
+				<tr valign="top">
+					<th style="width:125px" scope="row">Application ID: </th>
+					<td><input type="text" name="pn_app_id" value="<?php echo get_option('pn_app_id'); ?>" size="50"></td>
+				</tr>
+			 <tr valign="top">
+					<th style="width:125px" scope="row">REST API Key: </th>
+					<td><input type="text" name="pn_app_restkey" value="<?php echo get_option('pn_app_restkey'); ?>" size="50"></td>
+				</tr>
+				<tr valign="top">
+					<th style="width:125px" scope="row">Master Key: </th>
+					<td><input type="text" name="pn_app_masterkey" value="<?php echo get_option('pn_app_masterkey'); ?>" size="50"></td>
+				</tr>
+			</table>
+
+			<?php submit_button(); ?>
+
+		</form>
+		</div>
+		</div>
+		</div>
+		<?php
 
    }
 
